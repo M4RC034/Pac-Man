@@ -1,5 +1,6 @@
 #include <allegro5/allegro_image.h>
 #include <allegro5/allegro_primitives.h>
+#include <stdio.h>
 #include <string.h>
 #include "game.h"
 #include "shared.h"
@@ -104,22 +105,23 @@ static void checkItem(void) {
 	if (Grid_y >= basic_map->row_num - 1 || Grid_y <= 0 || Grid_x >= basic_map->col_num - 1 || Grid_x <= 0)
 		return;
 	// [HACKATHON 1-3]
-	// TODO: check which item you are going to eat and use `pacman_eatItem` to deal with it.
-	/*
-	switch (basic_map->map...)
+	// Eat whatever item sits on Pacman's current cell and score it.
+	switch (basic_map->map[Grid_y][Grid_x])
 	{
 	case '.':
-		pacman_eatItem(...);
+		pacman_eatItem(pman, '.');
+		game_main_Score += 10;
+		// [HACKATHON 1-4] erase the eaten item (only items, never a wall block).
+		basic_map->map[Grid_y][Grid_x] = ' ';
+		break;
+	case 'P':
+		pacman_eatItem(pman, 'P');
+		game_main_Score += 50;
+		basic_map->map[Grid_y][Grid_x] = ' ';
+		break;
 	default:
 		break;
 	}
-	*/
-	// [HACKTHON 1-4]
-	// erase the item you eat from map
-	// becareful no erasing the wall block.
-	/*
-		basic_map->map...;
-	*/
 }
 static void status_update(void) {
 	for (int i = 0; i < GHOST_NUM; i++) {
@@ -169,11 +171,9 @@ static void draw(void) {
 	al_clear_to_color(al_map_rgb(0, 0, 0));
 
 	
-	//	[TODO]
-	//	Draw scoreboard, something your may need is sprinf();
-	/*
-		al_draw_text(...);
-	*/
+	//	Draw scoreboard.
+	al_draw_textf(menuFont, al_map_rgb(255, 255, 0),
+		map_offset_x, 12, ALLEGRO_ALIGN_LEFT, "SCORE  %d", game_main_Score);
 
 	draw_map(basic_map);
 
@@ -229,30 +229,27 @@ static void destroy(void) {
 static void on_key_down(int key_code) {
 	switch (key_code)
 	{
-		// [HACKATHON 1-1]	
-		// TODO: Use allegro pre-defined enum ALLEGRO_KEY_<KEYNAME> to controll pacman movement
-		// we provided you a function `pacman_NextMove` to set the pacman's next move direction.
-		/*
+		// [HACKATHON 1-1]
+		// Map WASD to Pacman's next move direction.
 		case ALLEGRO_KEY_W:
-			pacman_NextMove(pman, ...);
+			pacman_NextMove(pman, UP);
 			break;
 		case ALLEGRO_KEY_A:
-			pacman_NextMove(pman, ...);
+			pacman_NextMove(pman, LEFT);
 			break;
 		case ALLEGRO_KEY_S:
-			pacman_NextMove(pman, ...);
+			pacman_NextMove(pman, DOWN);
 			break;
 		case ALLEGRO_KEY_D:
-			pacman_NextMove(pman, ...);
+			pacman_NextMove(pman, RIGHT);
 			break;
 		case ALLEGRO_KEY_C:
 			cheat_mode = !cheat_mode;
 			if (cheat_mode)
 				printf("cheat mode on\n");
-			else 
+			else
 				printf("cheat mode off\n");
 			break;
-		*/
 	default:
 		break;
 	}

@@ -157,9 +157,9 @@ Map* create_map(const char * filepath) {
 		for (int j = 0; j < M->col_num; j++) {
 			if (filepath == NULL)
 			// [HACKATHON 0-1]
-			// You can just switch to nthu_map if you want to finish HACKATHON 0 later.
-				M->map[i][j] = default_map[i][j]; 
-			//	M->map[i][j] = nthu_map[i][j];
+			// Render the real NTHU maze (with walls and beans) instead of the
+			// near-empty `default_map` placeholder.
+				M->map[i][j] = nthu_map[i][j];
 			else
 				// [HACKATHON 0-2]
 				// read the map from file just like read from default_map

@@ -26,34 +26,31 @@ extern float effect_volume;
 /* Declare static function */
 static bool pacman_movable(Pacman* pacman, Map* M, Directions targetDirec) {
 	// [HACKATHON 1-2]
-	// TODO: Determine if the current direction is movable.
-	// That is to say, your pacman shouldn't penetrate 'wall' and 'room'
-	// , where room is reserved for ghost to set up.
-	// 1) For the current direction `targetDirec`, use pre-implemented function
-	// `is_wall_block` and `is_room_block` to check if the block is wall or room. (they are both defined in map.c)
-	// 2) the coordinate data of pacman is stored in pacman->objData.Coord
-	// it is a self-defined pair IntInt type. Trace the code and utilize it.
+	// Determine if the current direction is movable: Pacman must not
+	// penetrate a 'wall' ('#') or the ghost 'room' ('B').
+	int target_x = pacman->objData.Coord.x;
+	int target_y = pacman->objData.Coord.y;
 
-	/*
-	... pacman->objData.Coord.x, ... pacman->objData.Coord.y;
-	
 	switch (targetDirec)
 	{
 	case UP:
-		...
+		target_y -= 1;
+		break;
 	case DOWN:
-		...
+		target_y += 1;
+		break;
 	case LEFT:
-		...
+		target_x -= 1;
+		break;
 	case RIGHT:
-		...
+		target_x += 1;
+		break;
 	default:
 		// for none UP, DOWN, LEFT, RIGHT direction u should return false.
 		return false;
 	}
-	if (is_wall_block(M, ..., ...) || is_room_block(M, ..., ...))
+	if (is_wall_block(M, target_x, target_y) || is_room_block(M, target_x, target_y))
 		return false;
-	*/
 	return true;
 }
 
