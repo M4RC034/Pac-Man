@@ -14,6 +14,7 @@ A classic Pac-Man game built in **C** using the [Allegro 5](https://liballeg.org
   - [Open in Visual Studio](#2-open-in-visual-studio)
   - [Restore NuGet Packages](#3-restore-nuget-packages)
   - [Build & Run](#4-build--run)
+- [Docker & Online Deployment](#-docker--online-deployment)
 - [Controls](#-controls)
 - [Project Structure](#-project-structure)
 - [Map Customization](#-map-customization)
@@ -102,6 +103,35 @@ Or simply **right-click the solution** in Solution Explorer → **Restore NuGet 
 2. Press **`F5`** (Start Debugging) or **`Ctrl + F5`** (Start Without Debugging)
 
 The game window (800×800) will open with the Pac-Man menu screen.
+
+---
+
+## 🐳 Docker & Online Deployment
+
+This is a native Allegro desktop game, so browser deployment needs a virtual desktop. The included Docker setup builds the C project on Linux, starts the game inside Xvfb, and exposes it through noVNC on port `7860`.
+
+> [!NOTE]
+> The Docker image uses a null audio backend because browser-hosted containers usually do not have a real sound device attached. Some gameplay TODOs from the original hackathon template are still present, so the image can build and launch even if every feature is not complete yet.
+
+### Build and run locally
+
+```bash
+docker build -t pacman-allegro .
+docker run --rm -p 7860:7860 pacman-allegro
+```
+
+Open:
+
+```text
+http://localhost:7860/vnc.html?autoconnect=true&resize=scale
+```
+
+### Deploy online
+
+- **Hugging Face Spaces:** create a Space with the **Docker** SDK and push this repository. Spaces exposes port `7860`, which matches the Dockerfile.
+- **GitHub:** GitHub Pages cannot run this native C/Allegro app directly. Use GitHub for the repository and optionally publish the Docker image to GitHub Container Registry, then run that image on Hugging Face Spaces or another container host.
+
+See [`DEPLOYMENT.md`](DEPLOYMENT.md) for the deployment checklist.
 
 ---
 

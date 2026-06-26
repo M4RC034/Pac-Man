@@ -1,0 +1,15 @@
+.git
+.github
+.vs
+build
+Debug
+Release
+x64
+Win32
+**/*.obj
+**/*.pdb
+**/*.ilk
+**/*.exe
+**/*.user
+**/packages
+log.txt
