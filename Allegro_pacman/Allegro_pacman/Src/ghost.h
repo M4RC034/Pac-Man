@@ -29,6 +29,11 @@ typedef enum {
 	Clyde
 } GhostType;
 
+typedef enum {
+	AI_RANDOM,   // wander with a non-reversing random walk
+	AI_CHASE     // follow the shortest path straight to pacman
+} GhostAI;
+
 
 typedef struct Ghost{
 	bitmapdata imgdata;
@@ -37,6 +42,7 @@ typedef struct Ghost{
 	int speed;
 	int64_t previous_timer_val;
 	GhostType typeFlag;
+	GhostAI ai_mode;
 	GhostStatus status;
 	ALLEGRO_BITMAP* move_sprite;
 	ALLEGRO_BITMAP* flee_sprite;

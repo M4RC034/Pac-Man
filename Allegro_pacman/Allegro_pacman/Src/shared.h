@@ -22,6 +22,12 @@ extern float music_volume;
 extern float effect_volume;
 extern bool gameDone;
 
+// Difficulty chosen on the menu; drives ghost count, ghost speed and power-up
+// length in the game scene. game_difficulty persists between rounds.
+typedef enum { DIFF_EASY = 0, DIFF_NORMAL = 1, DIFF_HARD = 2 } Difficulty;
+extern Difficulty game_difficulty;
+extern int ghost_base_speed;
+
 // Initialize shared variables and resources.
 // Allows the game to perform any initialization it needs before
 // starting to run.

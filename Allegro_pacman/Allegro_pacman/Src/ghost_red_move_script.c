@@ -2,6 +2,7 @@
 #include "ghost.h"
 #include "pacman_obj.h"
 #include "map.h"
+#include "shared.h"
 /* Shared variables */
 #define GO_OUT_TIME 256
 extern uint32_t GAME_TICK_CD;
@@ -11,28 +12,45 @@ extern const int cage_grid_x, cage_grid_y;
 
 /* Declare static function prototypes */
 static void ghost_red_move_script_FREEDOM(Ghost* ghost, Map* M);
+static void ghost_chase_FREEDOM(Ghost* ghost, Map* M, Pacman* pacman);
 static void ghost_red_move_script_BLOCKED(Ghost* ghost, Map* M);
+
+static void ghost_chase_FREEDOM(Ghost* ghost, Map* M, Pacman* pacman) {
+	// Chase mode: step along the BFS shortest path straight toward pacman.
+	Directions toward = shortest_path_direc(M,
+		ghost->objData.Coord.x, ghost->objData.Coord.y,
+		pacman->objData.Coord.x, pacman->objData.Coord.y);
+	if (toward != NONE && ghost_movable(ghost, M, toward, true))
+		ghost_NextMove(ghost, toward);
+	// Otherwise keep the current heading (the caller falls back to preMove).
+}
 
 static void ghost_red_move_script_FREEDOM(Ghost* ghost, Map* M) {
 	// [HACKATHON 2-4]
-	// Uncomment the following code and finish pacman picking random direction.
+	// Random walk, but avoid reversing so the ghost doesn't pace back and forth.
+	Directions back = NONE;
+	switch (ghost->objData.preMove) {
+	case UP:    back = DOWN;  break;
+	case DOWN:  back = UP;    break;
+	case LEFT:  back = RIGHT; break;
+	case RIGHT: back = LEFT;  break;
+	default:    back = NONE;  break;
+	}
 
-	ghost_NextMove(ghost, generateRandomNumber(1, 4));
-	/*
-	static Directions proba[4]; // possible movement
+	Directions proba[4]; // possible movements
 	int cnt = 0;
-	for (Directions i = 1; i <= 4; i++)
-		if (ghost_movable(...)) 	proba[cnt++] = i;
-	ghost_NextMove(ghost, proba[pick a reasonable random number]);
-	*/
+	for (Directions i = 1; i <= 4; i++) {
+		if (i == back)
+			continue;
+		// room = true: a freed ghost must not walk back into the room.
+		if (ghost_movable(ghost, M, i, true))
+			proba[cnt++] = i;
+	}
 
-	// [TODO]
-	// Description:
-	// For red(Blinky) ghost, we ask you to implement an random strategy ghost, 
-	// which means moving in random direction.
-	// But your random strategy have to designed carefully so that ghost won't walk back and forth.
-	// (The code here DO perform walking back and forth.)
-	
+	if (cnt > 0)
+		ghost_NextMove(ghost, proba[generateRandomNumber(0, cnt - 1)]);
+	else if (back != NONE)
+		ghost_NextMove(ghost, back); // dead-end: the only way out is to turn around
 }
 
 static void ghost_red_move_script_BLOCKED(Ghost* ghost, Map* M) {
@@ -68,7 +86,10 @@ void ghost_red_move_script(Ghost* ghost, Map* M, Pacman* pacman) {
 				ghost->status = GO_OUT;
 			break;
 		case FREEDOM:
-			ghost_red_move_script_FREEDOM(ghost, M);
+			if (ghost->ai_mode == AI_CHASE)
+				ghost_chase_FREEDOM(ghost, M, pacman);
+			else
+				ghost_red_move_script_FREEDOM(ghost, M);
 			break;
 		case GO_OUT:
 			ghost_move_script_GO_OUT(ghost, M);
@@ -77,7 +98,7 @@ void ghost_red_move_script(Ghost* ghost, Map* M, Pacman* pacman) {
 			ghost_move_script_GO_IN(ghost, M);
 			if (M->map[ghost->objData.Coord.y][ghost->objData.Coord.x] == 'B') {
 				ghost->status = GO_OUT;
-				ghost->speed = 2;
+				ghost->speed = ghost_base_speed;
 			}
 			break;
 		case FLEE:

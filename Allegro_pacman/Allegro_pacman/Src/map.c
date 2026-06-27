@@ -187,15 +187,12 @@ Map* create_map(const char * filepath) {
 void delete_map(Map* M) {
 	if (!M)
 		return;
-	// [TODO]
-	// you should free the dynamic allocated part of Map* M at here;
-	/*
-	if(M->map)
-	{
-		...
-		free(...)
-		...
-	*/
+	// Free the dynamically allocated 2-D map array before the struct itself.
+	if (M->map) {
+		for (int i = 0; i < M->row_num; i++)
+			free(M->map[i]);
+		free(M->map);
+	}
 	free(M);
 }
 
@@ -216,13 +213,9 @@ void draw_map(Map const* M) {
 				case '#':
 					draw_block_index(M, row, col);
 					break;
-				// [ TODO ]
-				// draw the power bean
-				/*
 				case 'P':
-					draw_power_bean(...);
+					draw_power_bean(M, row, col);
 					break;
-				*/
 				case '.':
 					draw_bean(M, row, col);
 					break;

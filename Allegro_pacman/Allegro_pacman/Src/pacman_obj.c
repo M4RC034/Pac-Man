@@ -91,14 +91,15 @@ Pacman* pacman_create() {
 }
 
 void pacman_destory(Pacman* pman) {
-	/*
-		[TODO]
-		free pacman resource
-		al_destory_bitmap(pman->...);
-		al_destro_timer(pman->...);
-		...
-		free(pman);
-	*/
+	if (!pman)
+		return;
+	if (pman->death_anim_counter)
+		al_destroy_timer(pman->death_anim_counter);
+	if (pman->move_sprite)
+		al_destroy_bitmap(pman->move_sprite);
+	if (pman->die_sprite)
+		al_destroy_bitmap(pman->die_sprite);
+	free(pman);
 }
 
 
@@ -110,28 +111,27 @@ void pacman_draw(Pacman* pman) {
 	*/
 	RecArea drawArea = getDrawArea(pman->objData, GAME_TICK_CD);
 
-	//Draw default image
-	al_draw_scaled_bitmap(pman->move_sprite, 0, 0,
+	// Choose the sprite row for the facing direction. pacman_move.png holds
+	// 8 frames of 16x16: two per direction -> [base] mouth open, [base+1] mouth closing.
+	int base;
+	switch (pman->objData.facing) {
+	case RIGHT: base = 0; break;
+	case LEFT:  base = 2; break;
+	case UP:    base = 4; break;
+	case DOWN:  base = 6; break;
+	default:    base = 0; break; // not moving yet -> face right
+	}
+
+	// Chomp: keep opening/closing the mouth while travelling between cells.
+	// moveCD counts down from GAME_TICK_CD to 0 over one cell of movement.
+	int frame = base + ((pman->objData.moveCD % 16) < 8 ? 0 : 1);
+
+	al_draw_scaled_bitmap(pman->move_sprite,
+		frame * 16, 0,
 		16, 16,
 		drawArea.x + fix_draw_pixel_offset_x, drawArea.y + fix_draw_pixel_offset_y,
 		draw_region, draw_region, 0
 	);
-	
-	int offset = 0;
-	if (game_over) {
-		/*
-			hint: instead of using pman->objData.moveCD, use Pacman's death_anim_counter to create animation
-		*/
-	}
-	else {
-		/*
-			switch(pman->objData.facing)
-			{
-			case LEFT:
-				...
-			}
-		*/
-	}
 }
 void pacman_move(Pacman* pacman, Map* M) {
 	if (!movetime(pacman->speed))

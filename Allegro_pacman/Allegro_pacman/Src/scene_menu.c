@@ -66,9 +66,21 @@ static void draw() {
 		menuFont,
 		al_map_rgb(255, 255, 255),
 		SCREEN_W/2,
-		SCREEN_H - 150,
+		SCREEN_H - 180,
 		ALLEGRO_ALIGN_CENTER,
 		"PRESS \"ENTER\""
+	);
+
+	static const char* diff_names[] = { "EASY", "NORMAL", "HARD" };
+	al_draw_textf(
+		menuFont, al_map_rgb(255, 255, 0),
+		SCREEN_W / 2, SCREEN_H - 130, ALLEGRO_ALIGN_CENTER,
+		"DIFFICULTY:  < %s >", diff_names[game_difficulty]
+	);
+	al_draw_text(
+		menuFont, al_map_rgb(150, 150, 150),
+		SCREEN_W / 2, SCREEN_H - 95, ALLEGRO_ALIGN_CENTER,
+		"UP / DOWN to change"
 	);
 
 		// [HACKATHON 3-3]
@@ -113,6 +125,16 @@ static void on_key_down(int keycode) {
 	switch (keycode) {
 		case ALLEGRO_KEY_ENTER:
 			game_change_scene(scene_main_create());
+			break;
+		case ALLEGRO_KEY_UP:
+		case ALLEGRO_KEY_W:
+			if (game_difficulty > DIFF_EASY)
+				game_difficulty--;
+			break;
+		case ALLEGRO_KEY_DOWN:
+		case ALLEGRO_KEY_S:
+			if (game_difficulty < DIFF_HARD)
+				game_difficulty++;
 			break;
 		default:
 			break;

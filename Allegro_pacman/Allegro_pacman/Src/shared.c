@@ -16,6 +16,8 @@ int fontSize = 30;
 float music_volume = 0.5;
 float effect_volume = 0.5;
 bool gameDone = false;
+Difficulty game_difficulty = DIFF_NORMAL;
+int ghost_base_speed = 2;
 
 /*
 	A way to accelerate is load assets once.

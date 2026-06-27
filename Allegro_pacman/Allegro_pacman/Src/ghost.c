@@ -3,6 +3,7 @@
 #include "ghost.h"
 #include "map.h"
 #include "pacman_obj.h"
+#include "shared.h"
 
 /* global variables*/
 // [ NOTE ]
@@ -25,7 +26,7 @@ static const int draw_region = 30;
 // fancy with speed, objData->moveCD and GAME_TICK, you can first start on 
 // working on animation of ghosts and pacman. // Once you finished the animation 
 // part, you will have more understanding on whole mechanism.
-static const int basic_speed = 2;
+// Base ghost speed is chosen per difficulty (shared.h / scene_game init).
 
 Ghost* ghost_create(int flag) {
 
@@ -39,91 +40,93 @@ Ghost* ghost_create(int flag) {
 	ghost->objData.Size.y = block_height;
 
 	ghost->objData.nextTryMove = NONE;
-	ghost->speed = basic_speed;
+	ghost->speed = ghost_base_speed;
 	ghost->status = BLOCKED;
+	// Two AI modes alternate by type: Blinky(0)/Inky(2) hunt via shortest path,
+	// Pinky(1)/Clyde(3) wander randomly.
+	ghost->ai_mode = (flag % 2 == 0) ? AI_CHASE : AI_RANDOM;
 
 	ghost->flee_sprite = load_bitmap("Assets/ghost_flee.png");
 	ghost->dead_sprite = load_bitmap("Assets/ghost_dead.png");
 
+	// Each type gets its own colour and a distinct spot inside the cage so
+	// they don't all overlap. They keep y == cage_grid_y (centre row) so the
+	// BLOCKED bobbing stays inside the room. All share the random red script.
 	switch (ghost->typeFlag) {
-	case Blinky:
-		ghost->objData.Coord.x = cage_grid_x;
+	case Pinky:
+		ghost->objData.Coord.x = cage_grid_x - 1;
 		ghost->objData.Coord.y = cage_grid_y;
-		ghost->move_sprite = load_bitmap("Assets/ghost_move_red.png");
-		ghost->move_script = &ghost_red_move_script;
+		ghost->move_sprite = load_bitmap("Assets/ghost_move_pink.png");
 		break;
+	case Inky:
+		ghost->objData.Coord.x = cage_grid_x + 1;
+		ghost->objData.Coord.y = cage_grid_y;
+		ghost->move_sprite = load_bitmap("Assets/ghost_move_blue.png");
+		break;
+	case Clyde:
+		ghost->objData.Coord.x = cage_grid_x;
+		ghost->objData.Coord.y = cage_grid_y + 1;
+		ghost->move_sprite = load_bitmap("Assets/ghost_move_orange.png");
+		break;
+	case Blinky:
 	default:
 		ghost->objData.Coord.x = cage_grid_x;
 		ghost->objData.Coord.y = cage_grid_y;
 		ghost->move_sprite = load_bitmap("Assets/ghost_move_red.png");
-		ghost->move_script = &ghost_red_move_script;
 		break;
 	}
+	ghost->move_script = &ghost_red_move_script;
 	return ghost;
 }
 void ghost_destory(Ghost* ghost) {
-	/*
-		[TODO]
-		free ghost resource
-
-		al_destory_bitmap(...);
-		...
-		free(ghost);
-	*/
+	if (!ghost)
+		return;
+	if (ghost->move_sprite)
+		al_destroy_bitmap(ghost->move_sprite);
+	if (ghost->flee_sprite)
+		al_destroy_bitmap(ghost->flee_sprite);
+	if (ghost->dead_sprite)
+		al_destroy_bitmap(ghost->dead_sprite);
+	free(ghost);
 }
 void ghost_draw(Ghost* ghost) {
 	// getDrawArea return the drawing RecArea defined by objData and GAME_TICK_CD
 	RecArea drawArea = getDrawArea(ghost->objData, GAME_TICK_CD);
 
-	//Draw default image
-	al_draw_scaled_bitmap(ghost->move_sprite, 0, 0,
-		16, 16,
-		drawArea.x + fix_draw_pixel_offset_x, drawArea.y + fix_draw_pixel_offset_y,
-		draw_region, draw_region, 0
-	);
+	const float dx = drawArea.x + fix_draw_pixel_offset_x;
+	const float dy = drawArea.y + fix_draw_pixel_offset_y;
 
-	/*
-		[TODO]
-		Draw ghost according to its status
-		hint : use ghost->objData.moveCD value to determine which frame of the animation to draw.
-
-			A not so good way is:
-
-			if(ghost->objData.moveCD % 16 == 0){
-				al_draw_scaled_bitmap(...);
-			}
-			else if(ghost->objData.moveCD % 16 == 1){
-				al_draw_scaled_bitmap(...);
-			}...
-
-			since modulo operation is expensive, better avoid using it.
-	*/
-
-	int bitmap_x_offset = 0;
-	// [TODO] below is for animation usage, change the sprite you want to use.
 	if (ghost->status == FLEE) {
-		/*
-			al_draw_scaled_bitmap(...)
-		*/
-	}
-	else if (ghost->status == GO_IN) {
-		/*
-		switch (ghost->objData.facing)
-		{
-		case LEFT:
-			...
-		*/
-	}
-	else {
-		/*
-		switch (ghost->objData.facing)
-		{
-		case LEFT:
-			...
-		}
-		*/
+		// Frightened: blue ghost, alternate the two blue frames.
+		int frame = (ghost->objData.moveCD % 16) < 8 ? 0 : 1;
+		al_draw_scaled_bitmap(ghost->flee_sprite, frame * 16, 0, 16, 16,
+			dx, dy, draw_region, draw_region, 0);
+		return;
 	}
 
+	// Pick the sprite column for the facing direction.
+	// move_sprite: two frames per direction -> [base]/[base+1] animate the feet.
+	// dead_sprite: one frame per direction (eyes only).
+	int move_base, dead_frame;
+	switch (ghost->objData.facing) {
+	case RIGHT: move_base = 0; dead_frame = 0; break;
+	case LEFT:  move_base = 2; dead_frame = 1; break;
+	case UP:    move_base = 4; dead_frame = 2; break;
+	case DOWN:  move_base = 6; dead_frame = 3; break;
+	default:    move_base = 0; dead_frame = 0; break;
+	}
+
+	if (ghost->status == GO_IN) {
+		// Eaten: only the eyes travel back to the room.
+		al_draw_scaled_bitmap(ghost->dead_sprite, dead_frame * 16, 0, 16, 16,
+			dx, dy, draw_region, draw_region, 0);
+		return;
+	}
+
+	// Normal (BLOCKED / GO_OUT / FREEDOM): directional sprite with a walk cycle.
+	int frame = move_base + ((ghost->objData.moveCD % 16) < 8 ? 0 : 1);
+	al_draw_scaled_bitmap(ghost->move_sprite, frame * 16, 0, 16, 16,
+		dx, dy, draw_region, draw_region, 0);
 }
 void ghost_NextMove(Ghost* ghost, Directions next) {
 	ghost->objData.nextTryMove = next;
@@ -154,56 +157,45 @@ void printGhostStatus(GhostStatus S) {
 }
 bool ghost_movable(Ghost* ghost, Map* M, Directions targetDirec, bool room) {
 	// [HACKATHON 2-3]
-	// TODO: Determine if the current direction is movable.
-	// Basically, this is a ghost version of `pacman_movable`.
-	// So if you have finished (and you should), you can just "copy and paste"
-	// and do some small alternation.
+	// Ghost version of `pacman_movable`: a ghost may not move into a wall, and
+	// (when `room` is true) it may not move into the ghost room either.
+	int target_x = ghost->objData.Coord.x;
+	int target_y = ghost->objData.Coord.y;
 
-	/*
-	... ghost->objData.Coord.x, ... ghost->objData.Coord.y;
-
-	switch (targetDirect)
+	switch (targetDirec)
 	{
 	case UP:
-		...
+		target_y -= 1;
+		break;
 	case DOWN:
-		...
+		target_y += 1;
+		break;
 	case LEFT:
-		...
+		target_x -= 1;
+		break;
 	case RIGHT:
-		...
+		target_x += 1;
+		break;
 	default:
 		// for none UP, DOWN, LEFT, RIGHT direction u should return false.
 		return false;
 	}
 
-	if (is_wall_block(M, ..., ...) || (room && is_room_block(M, ..., ...)))
+	if (is_wall_block(M, target_x, target_y) || (room && is_room_block(M, target_x, target_y)))
 		return false;
-	*/
-
 	return true;
-
 }
 
 void ghost_toggle_FLEE(Ghost* ghost, bool setFLEE) {
-	// [TODO]
-	// TODO: Here is reserved for power bean implementation.
-	// The concept is "When pacman eats the power bean, only
-	// ghosts who are in state FREEDOM will change to state FLEE.
-	// For those who are not (BLOCK, GO_IN, etc.), they won't change state."
-	// This implementation is based on the classic PACMAN game.
-	// You are allowed to do your own implementation of power bean system.
-	/*
-		if(setFLEE){
-			if(... == FREEDOM){
-				... = FLEE;
-				... speed = ...
-			}
-		}else{
-			if(... == FLEE)
-				..
-		}
-	*/
+	// When pacman eats a power bean, only free-roaming ghosts (FREEDOM) become
+	// frightened (FLEE). Ghosts in BLOCKED / GO_OUT / GO_IN keep their state.
+	if (setFLEE) {
+		if (ghost->status == FREEDOM)
+			ghost->status = FLEE;
+	} else {
+		if (ghost->status == FLEE)
+			ghost->status = FREEDOM;
+	}
 }
 
 void ghost_collided(Ghost* ghost) {
@@ -231,13 +223,20 @@ void ghost_move_script_GO_OUT(Ghost* ghost, Map* M) {
 		ghost->status = FREEDOM;
 }
 void ghost_move_script_FLEE(Ghost* ghost, Map* M, const Pacman * const pacman) {
-	// [TODO]
-	Directions shortestDirection = shortest_path_direc(M, ghost->objData.Coord.x, ghost->objData.Coord.y, pacman->objData.Coord.x, pacman->objData.Coord.y);
-	// Description:
-	// The concept here is to simulate ghosts running away from pacman while pacman is having power bean ability.
-	// To achieve this, think in this way. We first get the direction to shortest path to pacman, call it K (K is either UP, DOWN, RIGHT or LEFT).
-	// Then we choose other available direction rather than direction K.
-	// In this way, ghost will escape from pacman.
-
+	// Run away: get the direction of the shortest path toward pacman, then pick
+	// any other movable direction so the ghost heads away from him.
+	Directions toward = shortest_path_direc(M, ghost->objData.Coord.x, ghost->objData.Coord.y, pacman->objData.Coord.x, pacman->objData.Coord.y);
+	Directions proba[4];
+	int cnt = 0;
+	for (Directions i = 1; i <= 4; i++) {
+		if (i == toward)
+			continue;
+		if (ghost_movable(ghost, M, i, true))
+			proba[cnt++] = i;
+	}
+	if (cnt > 0)
+		ghost_NextMove(ghost, proba[generateRandomNumber(0, cnt - 1)]);
+	else
+		ghost_NextMove(ghost, toward); // cornered: nowhere left to run
 }
 
